@@ -1,0 +1,56 @@
+<project name="streamsx.patterns" default="jar" basedir=".">
+    <description>
+        Build file for streamsx.patterns project.
+    </description>
+  <!-- set global properties for this build -->
+  <property environment="env" />
+  <property name="streams.install" value="${env.STREAMS_INSTALL}" />
+
+    <target name="clean">
+        <delete dir="build"/>
+    </target>
+
+    <target name="compile">
+        <mkdir dir="build/classes"/>
+        <javac srcdir="src" destdir="build/classes" includeantruntime="no">
+          <classpath>
+            <path location="${streams.install}/lib/com.ibm.streams.operator.samples.jar"/>
+          </classpath>
+        </javac>
+    </target>
+
+    <target name="jar" depends="compile">
+        <mkdir dir="build/jar"/>
+        <jar destfile="build/jar/com.ibm.streamsx.patterns.jar" basedir="build/classes">
+        </jar>
+    </target>
+
+    <target name="test.compile" depends="jar" >
+        <mkdir dir="build/test/classes"/>
+        <javac srcdir="tests" destdir="build/test/classes" includeantruntime="yes" >
+          <classpath>
+            <path location="build/jar/com.ibm.streamsx.patterns.jar"/>
+            <path location="${streams.install}/lib/com.ibm.streams.operator.samples.jar"/>
+          </classpath>
+        </javac>
+    </target>
+
+    <target name="tests" depends="test.compile">
+      <mkdir dir="build/test/unittests"/>
+      <junit printsummary="yes" fork="yes" haltonfailure="yes">
+          <classpath>
+            <path location="build/test/classes"/>
+            <path location="build/jar/com.ibm.streamsx.patterns.jar"/>
+            <path location="${streams.install}/lib/com.ibm.streams.operator.samples.jar"/>
+          </classpath>
+        <formatter type="xml"/>
+        <batchtest fork="yes" todir="build/test/unittests">
+          <fileset dir="tests">
+              <include name="**/*Test.java"/>
+          </fileset>
+        </batchtest>
+      </junit>
+    </target>
+
+</project>
+	

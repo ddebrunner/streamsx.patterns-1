@@ -37,7 +37,7 @@ public class RegexFilterTest {
 	@Test
 	public void testSingleOutput() throws Exception {
 		
-			OperatorInvocation<TestRegexFilter> tf = jot.singleOp(TestRegexFilter.class);
+			OperatorInvocation<RegexFilterTestOp> tf = jot.singleOp(RegexFilterTestOp.class);
 			tf.setStringParameter("pattern", "tst.*22");
 			InputPortDeclaration input = tf.addInput(testSchema);
 			OutputPortDeclaration pass = tf.addOutput(testSchema);
@@ -67,7 +67,7 @@ public class RegexFilterTest {
 	@Test
 	public void testDoubleOutput() throws Exception {
 		
-		OperatorInvocation<TestRegexFilter> tf = jot.singleOp(TestRegexFilter.class);
+		OperatorInvocation<RegexFilterTestOp> tf = jot.singleOp(RegexFilterTestOp.class);
 		tf.setStringParameter("pattern", "tst.*22");
 		InputPortDeclaration input = tf.addInput(testSchema);
 		OutputPortDeclaration pass = tf.addOutput(testSchema);
@@ -101,37 +101,9 @@ public class RegexFilterTest {
 	
 	@Test
 	public void testNonMatchingPassPort() throws Exception {
-		FilterTest.testNonMatchingPorts(jot, TestRegexFilter.class);	
+		FilterTest.testNonMatchingPorts(jot, RegexFilterTestOp.class);	
 	}
 	
 	
-	/**
-	 * TestFilter that filters tuples according to
-	 * the attribute int32 a being greater than or equal
-	 * to a threshold.
-	 *
-	 */
-	public static class TestRegexFilter extends RegexFilter {
-		private String pattern = "";
-
-		public String getPattern() {
-			return pattern;
-		}
-
-		@Parameter(optional=true)
-		public void setPattern(String pattern) {
-			this.pattern = pattern;
-		}
-
-		@Override
-		protected String getExpression() {
-			return getPattern();
-		}
-
-		@Override
-		protected CharSequence getTupleSequence(Tuple tuple) throws Exception {
-			return tuple.getString("a");
-		}
-	}
 
 }

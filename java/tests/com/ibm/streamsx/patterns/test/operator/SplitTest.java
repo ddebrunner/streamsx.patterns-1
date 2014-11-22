@@ -29,131 +29,112 @@ import com.ibm.streams.operator.Type;
 import com.ibm.streamsx.patterns.operator.Split;
 
 public class SplitTest {
-		
-	private static final StreamSchema testSchema =
-			Type.Factory.getTupleType("tuple<int32 a, ustring b>").getTupleSchema();
-	
-	private final JavaOperatorTester jot = new JavaOperatorTester();
-	
-	/**
-	 * Test the Split with with various numbers of outputs.
-	 */
-	@Test
-	public void testSingleOutput() throws Exception {
-		
-		Random rand = new Random();
-		
-		for (int t = 0; t < 10; t++) {
-			OperatorInvocation<TestSplit> tf = jot.singleOp(TestSplit.class);
-			InputPortDeclaration input = tf.addInput(testSchema);
-			OutputPortDeclaration[] outputs = new OutputPortDeclaration[rand.nextInt(10) + 1];
-			for (int p = 0; p < outputs.length; p++) {
-				outputs[p] = tf.addOutput(testSchema);
-			}
-			tf.graph().compileChecks();
-			JavaTestableGraph tester = jot.tester(tf);
-			List<MostRecent<Tuple>> lastTuples = new ArrayList<MostRecent<Tuple>>(outputs.length);
-			for (OutputPortDeclaration output : outputs) {
-				MostRecent<Tuple> lastPassTuple = new MostRecent<Tuple>();
-				lastTuples.add(lastPassTuple);
-				tester.registerStreamHandler(output, lastPassTuple);			
-			}
-			
-			StreamingOutput<OutputTuple> inject = tester.getInputTester(input);
-			tester.initialize().get().allPortsReady().get();
-			for (int i = 0; i < 100; i++) {
-				for (MostRecent<Tuple> lastTuple : lastTuples)
-					lastTuple.clear();
-				int value = rand.nextInt(100);
-				inject.submitAsTuple(value, "v" + value);
-				
-				
-				if ((value % 7) == 0) {
-					// not passed through.
-					for (MostRecent<Tuple> lastTuple : lastTuples)
-						assertNull(lastTuple.getMostRecentTuple());
 
-				} else {
-					int port = (value + 37) % outputs.length;
-					MostRecent<Tuple> portLastTuple = lastTuples.get(port);
-					assertNotNull(portLastTuple.getMostRecentTuple());
-					assertEquals(value,
-							portLastTuple.getMostRecentTuple().getInt("a"));
-					assertEquals("v" + value, portLastTuple.getMostRecentTuple()
-							.getString("b"));
-					
-					// Ensure only seen on a single port.
-					for (MostRecent<Tuple> lastTuple : lastTuples)
-						if (lastTuple != portLastTuple)
-						    assertNull(lastTuple.getMostRecentTuple());
-				}
-			}
-			tester.shutdown().get();
-		}
-	}
-	
+    private static final StreamSchema testSchema = Type.Factory.getTupleType(
+            "tuple<int32 a, ustring b>").getTupleSchema();
 
-	
-	@Test
-	public void testNonMatchingPorts() throws Exception {
-		// testNonMatchingPorts(jot, TestFilter.class);	
+    private final JavaOperatorTester jot = new JavaOperatorTester();
 
-		OperatorInvocation<? extends Split> tf = jot.singleOp(TestSplit.class);
-		tf.addInput(testSchema);
-		tf.addOutput(testSchema.extend("float64", "c"));
-		assertFalse(tf.graph().compileChecks());
+    /**
+     * Test the Split with with various numbers of outputs.
+     */
+    @Test
+    public void testSingleOutput() throws Exception {
 
-		// Non-match pass port with second port
-		tf = jot.singleOp(TestSplit.class);
-		tf.addInput(testSchema);
-		tf.addOutput(testSchema.extend("float64", "c"));
-		tf.addOutput(testSchema);
-		assertFalse(tf.graph().compileChecks());
+        Random rand = new Random();
 
-		// Non-match non-pass port
-		tf = jot.singleOp(TestSplit.class);
-		tf.addInput(testSchema);
-		tf.addOutput(testSchema);
-		tf.addOutput(testSchema.extend("float64", "c"));
-		assertFalse(tf.graph().compileChecks());
+        for (int t = 0; t < 10; t++) {
+            OperatorInvocation<SplitTestOp> tf = jot
+                    .singleOp(SplitTestOp.class);
+            InputPortDeclaration input = tf.addInput(testSchema);
+            OutputPortDeclaration[] outputs = new OutputPortDeclaration[rand
+                    .nextInt(10) + 1];
+            for (int p = 0; p < outputs.length; p++) {
+                outputs[p] = tf.addOutput(testSchema);
+            }
+            tf.graph().compileChecks();
+            JavaTestableGraph tester = jot.tester(tf);
+            List<MostRecent<Tuple>> lastTuples = new ArrayList<MostRecent<Tuple>>(
+                    outputs.length);
+            for (OutputPortDeclaration output : outputs) {
+                MostRecent<Tuple> lastPassTuple = new MostRecent<Tuple>();
+                lastTuples.add(lastPassTuple);
+                tester.registerStreamHandler(output, lastPassTuple);
+            }
 
-		// No matching ports
-		tf = jot.singleOp(TestSplit.class);
-		tf.addInput(testSchema);
-		tf.addOutput(testSchema.extend("float64", "d"));
-		tf.addOutput(testSchema.extend("float64", "c"));
-		assertFalse(tf.graph().compileChecks());
-		
-		tf = jot.singleOp(TestSplit.class);
-		tf.addInput(testSchema);
-		tf.addOutput(testSchema);
-		tf.addOutput(testSchema);
-		tf.addOutput(testSchema);
-		tf.addOutput(testSchema);
-		tf.addOutput(testSchema);
-		tf.addOutput(testSchema);
-		tf.addOutput(testSchema.extend("float64", "c"));
-		assertFalse(tf.graph().compileChecks());
+            StreamingOutput<OutputTuple> inject = tester.getInputTester(input);
+            tester.initialize().get().allPortsReady().get();
+            for (int i = 0; i < 100; i++) {
+                for (MostRecent<Tuple> lastTuple : lastTuples)
+                    lastTuple.clear();
+                int value = rand.nextInt(100);
+                inject.submitAsTuple(value, "v" + value);
 
-	}
-	
-	
-	/**
-	 * TestFilter that filters tuples according to
-	 * the attribute int32 a being greater than or equal
-	 * to a threshold.
-	 *
-	 */
-	public static class TestSplit extends Split {
-		
-		@Override
-		protected int destination(Tuple tuple) throws Exception {
-			int a = tuple.getInt("a");
-			if ((a % 7) == 0)
-				return -1;
-				
-			return a + 37;
-		}
-	}
+                if ((value % 7) == 0) {
+                    // not passed through.
+                    for (MostRecent<Tuple> lastTuple : lastTuples)
+                        assertNull(lastTuple.getMostRecentTuple());
 
+                } else {
+                    int port = (value + 37) % outputs.length;
+                    MostRecent<Tuple> portLastTuple = lastTuples.get(port);
+                    assertNotNull(portLastTuple.getMostRecentTuple());
+                    assertEquals(value, portLastTuple.getMostRecentTuple()
+                            .getInt("a"));
+                    assertEquals("v" + value, portLastTuple
+                            .getMostRecentTuple().getString("b"));
+
+                    // Ensure only seen on a single port.
+                    for (MostRecent<Tuple> lastTuple : lastTuples)
+                        if (lastTuple != portLastTuple)
+                            assertNull(lastTuple.getMostRecentTuple());
+                }
+            }
+            tester.shutdown().get();
+        }
+    }
+
+    @Test
+    public void testNonMatchingPorts() throws Exception {
+        // testNonMatchingPorts(jot, TestFilter.class);
+
+        OperatorInvocation<? extends Split> tf = jot
+                .singleOp(SplitTestOp.class);
+        tf.addInput(testSchema);
+        tf.addOutput(testSchema.extend("float64", "c"));
+        assertFalse(tf.graph().compileChecks());
+
+        // Non-match pass port with second port
+        tf = jot.singleOp(SplitTestOp.class);
+        tf.addInput(testSchema);
+        tf.addOutput(testSchema.extend("float64", "c"));
+        tf.addOutput(testSchema);
+        assertFalse(tf.graph().compileChecks());
+
+        // Non-match non-pass port
+        tf = jot.singleOp(SplitTestOp.class);
+        tf.addInput(testSchema);
+        tf.addOutput(testSchema);
+        tf.addOutput(testSchema.extend("float64", "c"));
+        assertFalse(tf.graph().compileChecks());
+
+        // No matching ports
+        tf = jot.singleOp(SplitTestOp.class);
+        tf.addInput(testSchema);
+        tf.addOutput(testSchema.extend("float64", "d"));
+        tf.addOutput(testSchema.extend("float64", "c"));
+        assertFalse(tf.graph().compileChecks());
+
+        tf = jot.singleOp(SplitTestOp.class);
+        tf.addInput(testSchema);
+        tf.addOutput(testSchema);
+        tf.addOutput(testSchema);
+        tf.addOutput(testSchema);
+        tf.addOutput(testSchema);
+        tf.addOutput(testSchema);
+        tf.addOutput(testSchema);
+        tf.addOutput(testSchema.extend("float64", "c"));
+        assertFalse(tf.graph().compileChecks());
+
+    }
 }
